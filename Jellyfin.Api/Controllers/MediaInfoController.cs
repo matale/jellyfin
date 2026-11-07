@@ -137,13 +137,18 @@ public class MediaInfoController : BaseJellyfinApiController
         var profile = playbackInfoDto?.DeviceProfile;
         _logger.LogDebug("GetPostedPlaybackInfo profile: {@Profile}", profile);
 
+        var deviceId = User.GetDeviceId();
         if (profile is null)
         {
-            var caps = _deviceManager.GetCapabilities(User.GetDeviceId());
+            var caps = _deviceManager.GetCapabilities(deviceId);
             if (caps is not null)
             {
                 profile = caps.DeviceProfile;
             }
+        }
+        else if (!string.IsNullOrEmpty(deviceId))
+        {
+            await _deviceManager.SavePlaybackDeviceProfile(deviceId, profile).ConfigureAwait(false);
         }
 
         // Copy params from posted body

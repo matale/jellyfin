@@ -6,6 +6,7 @@ using Jellyfin.Data.Queries;
 using Jellyfin.Database.Implementations.Entities;
 using Jellyfin.Database.Implementations.Entities.Security;
 using MediaBrowser.Model.Devices;
+using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Querying;
 using MediaBrowser.Model.Session;
@@ -37,11 +38,26 @@ public interface IDeviceManager
     void SaveCapabilities(string deviceId, ClientCapabilities capabilities);
 
     /// <summary>
+    /// Stores the device profile a device sent with a playback info request.
+    /// </summary>
+    /// <param name="deviceId">The device id.</param>
+    /// <param name="profile">The device profile.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task SavePlaybackDeviceProfile(string deviceId, DeviceProfile profile);
+
+    /// <summary>
     /// Gets the capabilities.
     /// </summary>
     /// <param name="deviceId">The device id.</param>
     /// <returns>ClientCapabilities.</returns>
     ClientCapabilities GetCapabilities(string? deviceId);
+
+    /// <summary>
+    /// Gets the capabilities and playback device profile stored for a device.
+    /// </summary>
+    /// <param name="deviceId">The device id.</param>
+    /// <returns>The stored capabilities, or <c>null</c> if the device was not found.</returns>
+    DeviceCapabilitiesDto? GetStoredCapabilities(string deviceId);
 
     /// <summary>
     /// Gets the device information.
