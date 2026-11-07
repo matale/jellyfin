@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Jellyfin.Data;
 using Jellyfin.Data.Dtos;
@@ -12,10 +13,12 @@ using Jellyfin.Database.Implementations.Entities;
 using Jellyfin.Database.Implementations.Entities.Security;
 using Jellyfin.Database.Implementations.Enums;
 using Jellyfin.Extensions;
+using Jellyfin.Extensions.Json;
 using MediaBrowser.Common.Extensions;
 using MediaBrowser.Controller.Devices;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Devices;
+using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Querying;
 using MediaBrowser.Model.Session;
@@ -69,6 +72,68 @@ namespace Jellyfin.Server.Implementations.Devices
         public void SaveCapabilities(string deviceId, ClientCapabilities capabilities)
         {
             _capabilitiesMap[deviceId] = capabilities;
+
+            var json = JsonSerializer.Serialize(capabilities, JsonDefaults.Options);
+            var devices = GetDevicesToUpdate(deviceId, d => d.Capabilities, json);
+            if (devices.Count == 0)
+            {
+                return;
+            }
+
+            using var dbContext = _dbProvider.CreateDbContext();
+            dbContext.Devices
+                .Where(d => d.DeviceId == deviceId)
+                .ExecuteUpdate(s => s.SetProperty(d => d.Capabilities, json));
+
+            foreach (var device in devices)
+            {
+                device.Capabilities = json;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task SavePlaybackDeviceProfile(string deviceId, DeviceProfile profile)
+        {
+            var json = JsonSerializer.Serialize(profile, JsonDefaults.Options);
+            var devices = GetDevicesToUpdate(deviceId, d => d.PlaybackDeviceProfile, json);
+            if (devices.Count == 0)
+            {
+                return;
+            }
+
+            var dbContext = await _dbProvider.CreateDbContextAsync().ConfigureAwait(false);
+            await using (dbContext.ConfigureAwait(false))
+            {
+                await dbContext.Devices
+                    .Where(d => d.DeviceId == deviceId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.PlaybackDeviceProfile, json))
+                    .ConfigureAwait(false);
+            }
+
+            foreach (var device in devices)
+            {
+                device.PlaybackDeviceProfile = json;
+            }
+        }
+
+        /// <inheritdoc />
+        public DeviceCapabilitiesDto? GetStoredCapabilities(string deviceId)
+        {
+            var devices = _devices.Values
+                .Where(d => d.DeviceId == deviceId)
+                .OrderByDescending(d => d.DateLastActivity)
+                .ToList();
+            if (devices.Count == 0)
+            {
+                return null;
+            }
+
+            return new()
+            {
+                DeviceId = deviceId,
+                Capabilities = devices.Select(d => d.Capabilities).FirstOrDefault(c => c is not null),
+                PlaybackDeviceProfile = devices.Select(d => d.PlaybackDeviceProfile).FirstOrDefault(p => p is not null)
+            };
         }
 
         /// <inheritdoc />
@@ -247,6 +312,12 @@ namespace Jellyfin.Server.Implementations.Devices
             return user.GetPreference(PreferenceKind.EnabledDevices).Contains(deviceId, StringComparison.OrdinalIgnoreCase)
                    || !GetCapabilities(deviceId).SupportsPersistentIdentifier;
         }
+
+        // Only cached devices whose stored value differs need a database write.
+        private List<Device> GetDevicesToUpdate(string deviceId, Func<Device, string?> getValue, string value)
+            => _devices.Values
+                .Where(d => d.DeviceId == deviceId && !string.Equals(getValue(d), value, StringComparison.Ordinal))
+                .ToList();
 
         private DeviceInfo ToDeviceInfo(Device authInfo, DeviceOptions? options = null)
         {
