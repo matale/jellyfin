@@ -16,7 +16,7 @@ public class DeviceCapabilitiesDto
     public string? Capabilities { get; set; }
 
     /// <summary>
-    /// Gets or sets the last device profile the device sent with a playback info request, serialized as JSON.
+    /// Gets or sets the last device profile used for playback by the device, serialized as JSON.
     /// </summary>
     public string? PlaybackDeviceProfile { get; set; }
 }

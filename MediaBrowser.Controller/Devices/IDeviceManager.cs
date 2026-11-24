@@ -38,7 +38,7 @@ public interface IDeviceManager
     void SaveCapabilities(string deviceId, ClientCapabilities capabilities);
 
     /// <summary>
-    /// Stores the device profile a device sent with a playback info request.
+    /// Stores the last device profile used for playback by a device.
     /// </summary>
     /// <param name="deviceId">The device id.</param>
     /// <param name="profile">The device profile.</param>

@@ -5,12 +5,14 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Jellyfin.Api.Attributes;
+using Jellyfin.Api.Extensions;
 using Jellyfin.Api.Helpers;
 using Jellyfin.Api.ModelBinders;
 using Jellyfin.Api.Models.StreamingDtos;
 using Jellyfin.Data.Enums;
 using Jellyfin.Extensions;
 using MediaBrowser.Common.Extensions;
+using MediaBrowser.Controller.Devices;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.MediaEncoding;
@@ -38,6 +40,7 @@ public class UniversalAudioController : BaseJellyfinApiController
     private readonly AudioHelper _audioHelper;
     private readonly DynamicHlsHelper _dynamicHlsHelper;
     private readonly IUserManager _userManager;
+    private readonly IDeviceManager _deviceManager;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="UniversalAudioController"/> class.
@@ -48,13 +51,15 @@ public class UniversalAudioController : BaseJellyfinApiController
     /// <param name="audioHelper">Instance of <see cref="AudioHelper"/>.</param>
     /// <param name="dynamicHlsHelper">Instance of <see cref="DynamicHlsHelper"/>.</param>
     /// <param name="userManager">Instance of the <see cref="IUserManager"/> interface.</param>
+    /// <param name="deviceManager">Instance of the <see cref="IDeviceManager"/> interface.</param>
     public UniversalAudioController(
         ILibraryManager libraryManager,
         ILogger<UniversalAudioController> logger,
         MediaInfoHelper mediaInfoHelper,
         AudioHelper audioHelper,
         DynamicHlsHelper dynamicHlsHelper,
-        IUserManager userManager)
+        IUserManager userManager,
+        IDeviceManager deviceManager)
     {
         _libraryManager = libraryManager;
         _logger = logger;
@@ -62,6 +67,7 @@ public class UniversalAudioController : BaseJellyfinApiController
         _audioHelper = audioHelper;
         _dynamicHlsHelper = dynamicHlsHelper;
         _userManager = userManager;
+        _deviceManager = deviceManager;
     }
 
     /// <summary>
@@ -129,6 +135,13 @@ public class UniversalAudioController : BaseJellyfinApiController
         var deviceProfile = GetDeviceProfile(container, transcodingContainer, audioCodec, transcodingProtocol, transcodingAudioChannels, maxAudioSampleRate, maxAudioBitDepth, maxAudioChannels);
 
         _logger.LogInformation("GetPostedPlaybackInfo profile: {@Profile}", deviceProfile);
+
+        // Audio played this way never goes through PlaybackInfo, so record the profile built from the query here.
+        var profileDeviceId = User.GetDeviceId() ?? deviceId;
+        if (!string.IsNullOrEmpty(profileDeviceId) && HttpMethods.IsGet(Request.Method))
+        {
+            await _deviceManager.SavePlaybackDeviceProfile(profileDeviceId, deviceProfile).ConfigureAwait(false);
+        }
 
         var info = await _mediaInfoHelper.GetPlaybackInfo(
                 item,
