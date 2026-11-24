@@ -78,6 +78,27 @@ public class DevicesController : BaseJellyfinApiController
     }
 
     /// <summary>
+    /// Get the capabilities and playback device profile last reported by a device.
+    /// </summary>
+    /// <param name="id">Device Id.</param>
+    /// <response code="200">Device capabilities retrieved.</response>
+    /// <response code="404">Device not found.</response>
+    /// <returns>An <see cref="OkResult"/> containing the stored capabilities on success, or a <see cref="NotFoundResult"/> if the device could not be found.</returns>
+    [HttpGet("Capabilities")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult<DeviceCapabilitiesDto> GetDeviceCapabilities([FromQuery, Required] string id)
+    {
+        var capabilities = _deviceManager.GetStoredCapabilities(id);
+        if (capabilities is null)
+        {
+            return NotFound();
+        }
+
+        return capabilities;
+    }
+
+    /// <summary>
     /// Get options for a device.
     /// </summary>
     /// <param name="id">Device Id.</param>

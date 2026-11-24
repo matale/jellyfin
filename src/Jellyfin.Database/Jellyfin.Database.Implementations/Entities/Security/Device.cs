@@ -100,6 +100,22 @@ namespace Jellyfin.Database.Implementations.Entities.Security
         public DateTime DateLastActivity { get; set; }
 
         /// <summary>
+        /// Gets or sets the last client capabilities reported by the device, serialized as JSON.
+        /// </summary>
+        /// <remarks>
+        /// Stored for display purposes only.
+        /// </remarks>
+        public string? Capabilities { get; set; }
+
+        /// <summary>
+        /// Gets or sets the last device profile the device sent with a playback info request, serialized as JSON.
+        /// </summary>
+        /// <remarks>
+        /// Stored for display purposes only.
+        /// </remarks>
+        public string? PlaybackDeviceProfile { get; set; }
+
+        /// <summary>
         /// Gets the user.
         /// </summary>
         public User User { get; private set; }
