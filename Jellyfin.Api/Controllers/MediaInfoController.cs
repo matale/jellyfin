@@ -146,7 +146,9 @@ public class MediaInfoController : BaseJellyfinApiController
                 profile = caps.DeviceProfile;
             }
         }
-        else if (!string.IsNullOrEmpty(deviceId))
+
+        // Record the profile actually used, including one taken from the reported capabilities.
+        if (profile is not null && !string.IsNullOrEmpty(deviceId))
         {
             await _deviceManager.SavePlaybackDeviceProfile(deviceId, profile).ConfigureAwait(false);
         }
@@ -291,6 +293,13 @@ public class MediaInfoController : BaseJellyfinApiController
     {
         userId ??= openLiveStreamDto?.UserId;
         userId = RequestHelpers.GetUserId(User, userId);
+
+        var deviceId = User.GetDeviceId();
+        if (openLiveStreamDto?.DeviceProfile is not null && !string.IsNullOrEmpty(deviceId))
+        {
+            await _deviceManager.SavePlaybackDeviceProfile(deviceId, openLiveStreamDto.DeviceProfile).ConfigureAwait(false);
+        }
+
         var request = new LiveStreamRequest
         {
             OpenToken = openToken ?? openLiveStreamDto?.OpenToken,
