@@ -710,6 +710,13 @@ namespace MediaBrowser.Model.Dlna
                     // If user prefers default streams, only allow stream selection on default streams.
                     candidateAudioStreams = item.MediaStreams.Where(stream => stream.Type == MediaStreamType.Audio && stream.IsDefault).ToArray();
                 }
+
+                // The filters above can leave nothing to pick from, for example when no audio stream is flagged as default.
+                // Fall back to the selected stream so its codec is still checked, rather than being reported as unsupported.
+                if (candidateAudioStreams.Count == 0 && audioStream is not null)
+                {
+                    candidateAudioStreams = [audioStream];
+                }
             }
 
             var videoStream = item.VideoStream;
