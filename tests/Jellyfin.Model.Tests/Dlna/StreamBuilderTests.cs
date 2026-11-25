@@ -10,6 +10,7 @@ using Jellyfin.Extensions.Json;
 using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
+using MediaBrowser.Model.MediaInfo;
 using MediaBrowser.Model.Session;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -441,6 +442,27 @@ namespace Jellyfin.Model.Tests
             var query = System.Web.HttpUtility.ParseQueryString(queryString ?? string.Empty);
             Assert.Null(query["SubtitleStreamIndex"]);
             Assert.Null(query["SubtitleMethod"]);
+        }
+
+        [Fact]
+        public async Task BuildVideoItemWithNonDefaultAudioWhenDefaultAudioPreferredDoesNotReportAudioCodec()
+        {
+            // The audio track is not flagged as default, but the user prefers default tracks, so no audio track is a candidate.
+            // The file still fails direct play on stream count; that must be the only reason reported, as the audio is copied.
+            var options = await GetMediaOptions("Tizen4-4K-5.1", "numstreams-33");
+            var mediaSource = options.MediaSources[0];
+            mediaSource.DefaultAudioIndexSource = AudioIndexSource.Default;
+            foreach (var stream in mediaSource.MediaStreams.Where(stream => stream.Type == MediaStreamType.Audio))
+            {
+                stream.IsDefault = false;
+            }
+
+            var streamInfo = GetStreamBuilder().GetOptimalVideoStream(options);
+
+            Assert.NotNull(streamInfo);
+            Assert.Equal(PlayMethod.Transcode, streamInfo.PlayMethod);
+            Assert.Equal(TranscodeReason.StreamCountExceedsLimit, streamInfo.TranscodeReasons);
+            Assert.Equal(mediaSource.DefaultAudioStreamIndex, streamInfo.AudioStreamIndex);
         }
 
         private StreamInfo? BuildVideoItemSimpleTest(MediaOptions options, PlayMethod? playMethod, TranscodeReason why, string transcodeMode, string transcodeProtocol)
